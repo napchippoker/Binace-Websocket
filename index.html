@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realtime Perpetual Futures Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 14px;
+            background-color: white;
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px 15px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f8f8f8;
+            font-weight: bold;
+            font-size: 16px;
+            color: #333;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        .positive {
+            color: green;
+        }
+
+        .negative {
+            color: red;
+        }
+
+        tr:first-child, tr:nth-child(2) {
+            font-weight: bold;
+            background-color: #fffbe7;
+        }
+    </style>
+</head>
+<body>
+    <h1>Realtime Perpetual Futures Tracker</h1>
+    <table id="cryptoTable">
+        <thead>
+            <tr>
+                <th>#</th> <!-- Serial number -->
+                <th>Symbol</th>
+                <th>Price</th>
+                <th>Index Price</th> <!-- Placeholder for Index Price -->
+                <th>24h Change</th>
+                <th>Volume</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        // Sử dụng stream từ Binance Futures WebSocket
+        const ws = new WebSocket('wss://fstream.binance.com/ws/!ticker@arr');
+        let cryptoData = {};
+
+        // Nhận dữ liệu từ WebSocket Binance Futures
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            data.forEach(item => {
+                if (item.s.endsWith('USDT')) {
+                    // Lưu thông tin giá của hợp đồng vĩnh cửu
+                    cryptoData[item.s] = {
+                        symbol: item.s,
+                        price: parseFloat(item.c),  // Current price
+                        priceChangePercent: parseFloat(item.P),  // 24h price change percentage
+                        volume: parseFloat(item.q)  // 24h volume
+                    };
+                }
+            });
+
+            updateTable();
+        };
+
+        function updateTable() {
+            const tbody = document.querySelector('#cryptoTable tbody');
+            tbody.innerHTML = '';
+
+            // Sắp xếp theo khối lượng và chọn 350 đồng coin có khối lượng lớn nhất
+            const sortedData = Object.values(cryptoData)
+                .sort((a, b) => b.volume - a.volume)
+                .slice(0, 350);
+
+            // Tìm Bitcoin và Ethereum
+            const btc = sortedData.find(coin => coin?.symbol === 'BTCUSDT');
+            const eth = sortedData.find(coin => coin?.symbol === 'ETHUSDT');
+
+            // Lọc bỏ Bitcoin và Ethereum khỏi danh sách để chúng xuất hiện ở đầu
+            const filteredData = sortedData.filter(coin => coin?.symbol !== 'BTCUSDT' && coin?.symbol !== 'ETHUSDT');
+            
+            // Thêm Bitcoin và Ethereum vào đầu danh sách nếu chúng tồn tại
+            const finalData = [];
+            if (btc) finalData.push(btc);
+            if (eth) finalData.push(eth);
+            finalData.push(...filteredData);
+
+            // Hiển thị dữ liệu trên bảng
+            finalData.forEach((coin, index) => {
+                if (!coin) return;  // Bỏ qua nếu coin không xác định
+
+                const row = tbody.insertRow();
+
+                // Số thứ tự
+                row.insertCell(0).textContent = index + 1;
+
+                // Ký hiệu coin
+                row.insertCell(1).textContent = coin.symbol;
+
+                // Giá (định dạng với 2 số thập phân)
+                row.insertCell(2).textContent = `$${coin.price.toFixed(2)}`;
+
+                // Index Price (có thể thay đổi nguồn)
+                row.insertCell(3).textContent = `$${coin.price.toFixed(2)}`;
+
+                // 24h Change
+                const changeCell = row.insertCell(4);
+                changeCell.textContent = coin.priceChangePercent.toFixed(2) + '%';
+                changeCell.className = coin.priceChangePercent >= 0 ? 'positive' : 'negative';
+
+                // Khối lượng (định dạng thành số nguyên)
+                row.insertCell(5).textContent = coin.volume.toFixed(0);
+            });
+        }
+    </script>
+</body>
+</html>
