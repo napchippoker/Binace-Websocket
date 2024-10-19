@@ -53,10 +53,25 @@
             font-weight: bold;
             background-color: #fffbe7;
         }
+        #copySymbols {
+        padding: 10px 15px;
+        font-size: 16px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-bottom: 20px;
+    }
+
+    #copySymbols:hover {
+        background-color: #45a049;
+    }
     </style>
 </head>
 <body>
     <h1>Realtime Perpetual Futures Tracker</h1>
+    <button id="copySymbols">Copy Symbols</button>
     <table id="cryptoTable">
         <thead>
             <tr>
@@ -71,6 +86,7 @@
         <tbody></tbody>
     </table>
 
+    
     <script>
         // Sử dụng stream từ Binance Futures WebSocket
         const ws = new WebSocket('wss://fstream.binance.com/ws/!ticker@arr');
@@ -143,6 +159,20 @@
                 row.insertCell(5).textContent = coin.volume.toFixed(0);
             });
         }
+
+        document.getElementById('copySymbols').addEventListener('click', function() {
+        const symbols = Object.values(cryptoData)
+            .sort((a, b) => b.volume - a.volume)
+            .slice(0, 350)
+            .map(coin => coin.symbol)
+            .join('\n');
+
+        navigator.clipboard.writeText(symbols).then(function() {
+            alert('Symbols copied to clipboard!');
+        }, function(err) {
+            console.error('Could not copy text: ', err);
+        });
+    });
     </script>
 </body>
 </html>
